@@ -11,48 +11,48 @@ package main
 //go:generate sh -c "[ -e ./plsql/plsql_base_parser.go ] || (cd plsql && wget https://github.com/antlr/grammars-v4/raw/master/sql/plsql/Go/plsql_base_parser.go)"
 
 import (
+	"fmt"
+	"io/ioutil"
+	"log"
 	plsql "plsql-antlr-go/plsql"
+	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
 
-// type TreeShapeListener struct {
-// 	*parser.BaseJSONListener
-// }
+type TreeShapeListener struct {
+	*plsql.BasePlSqlParserListener
+}
 
-// func NewTreeShapeListener() *TreeShapeListener {
-// 	return new(TreeShapeListener)
-// }
+func NewTreeShapeListener() *TreeShapeListener {
+	return new(TreeShapeListener)
+}
 
-// func (this *TreeShapeListener) EnterEveryRule(ctx antlr.ParserRuleContext) {
-// 	fmt.Println(ctx.GetText())
-// }
+func (t *TreeShapeListener) EnterEveryRule(ctx antlr.ParserRuleContext) {
+	fmt.Println("ENTER", ctx.GetStart())
+	fmt.Printf("ENTER %+v", ctx.GetPayload())
+}
+
+func (t *TreeShapeListener) ExitEveryRule(ctx antlr.ParserRuleContext) {
+	fmt.Println("EXIT", ctx.GetStop())
+}
 
 func main() {
-	// input, _ := antlr.NewFileStream(os.Args[1])
-	// lexer := parser.NewJSONLexer(input)
-	// stream := antlr.NewCommonTokenStream(lexer, 0)
-	// p := parser.NewJSONParser(stream)
-	// p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
-	// p.BuildParseTrees = true
-	// tree := p.Json()
-	// antlr.ParseTreeWalkerDefault.Walk(NewTreeShapeListener(), tree)
 
-	sql := `
-		SELECT
-			*
-		FROM
-			"table"
-		WHERE
-			"column" = :value
-	`
+	// 要求全转换为大写，否则会报 token recognition error at: 'x'
+	f, err := ioutil.ReadFile("test/report_query_func_insert_tx_tool_key.sql")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	sql := strings.ToUpper(string(f))
 
 	lexer := plsql.NewPlSqlLexer(antlr.NewInputStream(sql))
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-	// Create the Parser
 	parser := plsql.NewPlSqlParser(stream)
+	parser.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
 	parser.BuildParseTrees = true
 
 	// Finally parse the expression rule
+	antlr.ParseTreeWalkerDefault.Walk(NewTreeShapeListener(), parser.Sql_statement())
 
 }
