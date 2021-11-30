@@ -9,19 +9,22 @@ package main
 //go:generate sed -i -e "s/self./p./; s/PlSqlParserBase/PlSqlBaseParser/" plsql/plsql_parser.go
 //go:generate sh -c "[ -e ./plsql/plsql_base_lexer.go ] || (cd plsql && wget https://github.com/antlr/grammars-v4/raw/master/sql/plsql/Go/plsql_base_lexer.go)""
 //go:generate sh -c "[ -e ./plsql/plsql_base_parser.go ] || (cd plsql && wget https://github.com/antlr/grammars-v4/raw/master/sql/plsql/Go/plsql_base_parser.go)"
+//go:generate sh -c "[ -e SQLLexer.g4 ] || wget https://github.com/pgcodekeeper/pgcodekeeper/raw/master/apgdiff/antlr-src/SQLLexer.g4"
+//go:generate sh -c "[ -e SQLParser.g4 ] || wget https://github.com/pgcodekeeper/pgcodekeeper/raw/master/apgdiff/antlr-src/SQLParser.g4"
+//go:generate java -jar antlr-4.9.3-complete.jar -Dlanguage=Go -o postgresql/ SQLLexer.g4 SQLParser.g4
 
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	plsql "plsql-antlr-go/plsql"
+	postgresql "plsql-antlr-go/postgresql"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
 
 type TreeShapeListener struct {
-	*plsql.BasePlSqlParserListener
+	*postgresql.BaseSQLParserListener
 }
 
 func NewTreeShapeListener() *TreeShapeListener {
@@ -29,8 +32,7 @@ func NewTreeShapeListener() *TreeShapeListener {
 }
 
 func (t *TreeShapeListener) EnterEveryRule(ctx antlr.ParserRuleContext) {
-	fmt.Println("ENTER", ctx.GetStart())
-	fmt.Printf("ENTER %+v", ctx.GetPayload())
+	fmt.Println("ENTER", ctx.GetText())
 }
 
 func (t *TreeShapeListener) ExitEveryRule(ctx antlr.ParserRuleContext) {
@@ -46,13 +48,13 @@ func main() {
 	}
 	sql := strings.ToUpper(string(f))
 
-	lexer := plsql.NewPlSqlLexer(antlr.NewInputStream(sql))
+	lexer := postgresql.NewSQLLexer(antlr.NewInputStream(sql))
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-	parser := plsql.NewPlSqlParser(stream)
+	parser := postgresql.NewSQLParser(stream)
 	parser.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
 	parser.BuildParseTrees = true
 
 	// Finally parse the expression rule
-	antlr.ParseTreeWalkerDefault.Walk(NewTreeShapeListener(), parser.Sql_statement())
+	antlr.ParseTreeWalkerDefault.Walk(NewTreeShapeListener(), parser.Sql())
 
 }

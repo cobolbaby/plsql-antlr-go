@@ -1,7 +1,9 @@
 PlSqlLexer.g4
 PlSqlParser.g4
 plsql
+SQLLexer.g4
+SQLParser.g4
+postgresql
 antlr-4.9.3-complete.jar
-outline
 test
 __debug_bin
